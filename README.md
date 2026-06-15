@@ -3,9 +3,11 @@
 Two AI agents fight over a prize: the right to be **the player's first credit card**.
 
 Each agent is handed one card's dossier (a `.md` file under `cards/`) and told to
-argue for it. They trade an opening statement and a few rebuttal rounds. Then a
-third **judge** agent scores both against the player's weighted requirements and
-declares a winner.
+argue for it. Before it speaks, every advocate must run its claims past a
+**fact-checker** agent that verifies the numbers against live web sources. They
+then trade an opening statement and a few rebuttal rounds. A **judge** agent
+scores both against the player's weighted requirements — discounting any claim
+that came back unverified — and declares a winner.
 
 This is a real multi-agent debate, not a templating trick — every line the
 contestants and judge speak is a live Claude call.
@@ -15,9 +17,9 @@ contestants and judge speak is a live Claude call.
 | | Native slash command | Python CLI |
 |---|---|---|
 | How | `/judge-cards` inside Claude Code | `python -m arena` |
-| Agents | 3 real Claude Code subagents (2 advocates + 1 judge), advocates run in parallel | 1 Python process making sequential calls |
-| Needs | Claude Code, nothing else | `claude` CLI on PATH, or an API key |
-| Best for | "three parallel agents in my terminal" | scripting, tests, CI |
+| Agents | 5 real Claude Code subagents (2 advocates + 2 fact-checkers + 1 judge); advocates run in parallel, each spawning its own fact-checker | 1 Python process making sequential calls |
+| Needs | Claude Code, web access for fact-checks | `claude` CLI on PATH, or an API key |
+| Best for | "nested fact-checked agents in my terminal" | scripting, tests, CI |
 
 Both read the same `cards/` dossiers. Pick whichever fits.
 
@@ -45,7 +47,7 @@ stay on your machine and are never pushed. Point the arena at it:
 python -m arena --requirements personal/requirements.md
 ```
 
-## The native version (3 parallel agents)
+## The native version (nested, fact-checked agents)
 
 Inside Claude Code, from the project root:
 
@@ -56,28 +58,36 @@ Inside Claude Code, from the project root:
 
 What happens:
 1. **Round 1 — parallel openings.** The command spawns two `card-advocate`
-   subagents in one batch; they argue blind, simultaneously.
+   subagents in one batch. Before either speaks, each spawns its own
+   `card-fact-checker` (WebSearch + WebFetch) to verify its numbers; claims that
+   can't clear ~95% confidence get tagged `[UNVERIFIED]`. They then argue blind,
+   simultaneously.
 2. **Round 2 — parallel rebuttals.** Both advocates run again in parallel, each
    handed the other's opening to rebut.
 3. **Round 3 — verdict.** One `card-judge` subagent reads the rubric and the full
-   transcript, scores both, and declares a winner.
+   transcript, scores both — giving near-zero weight to `[UNVERIFIED]` claims —
+   and declares a winner.
 
-The parallelism is the two advocates within each round. Rebuttals must follow
-openings (you can't react to an argument you haven't seen), so it's two parallel
-waves plus a judge — not one single wave.
+The nesting is: command → 2 advocates → each advocate → 1 fact-checker, then → 1
+judge. Agents launching agents. The parallelism is the two advocate+fact-checker
+branches within each round.
 
 Files: `.claude/commands/judge-cards.md`, `.claude/commands/build-profile.md`,
-`.claude/agents/card-advocate.md`, `.claude/agents/card-judge.md`,
-`.claude/agents/profile-interviewer.md`.
+`.claude/agents/card-advocate.md`, `.claude/agents/card-fact-checker.md`,
+`.claude/agents/card-judge.md`, `.claude/agents/profile-interviewer.md`.
 
 ## The pieces
 
 ```
 card-arena/
+├── .claude/
+│   ├── commands/   ← /judge-cards (fact-checked debate), /build-profile (interview)
+│   └── agents/     ← card-advocate, card-fact-checker, card-judge, profile-interviewer
 ├── cards/
 │   ├── boa_student.md          ← contestant A dossier ("The Strategist")
 │   ├── discover_it_student.md  ← contestant B dossier ("The Underdog")
-│   └── requirements.md         ← the prize + weighted rubric (judge reads this)
+│   └── requirements.md         ← the prize + weighted rubric template (judge reads this)
+├── personal/       ← gitignored: your real profile + verdicts, never published
 ├── arena/
 │   ├── dossier.py   ← parse a card .md into a Card
 │   ├── llm.py       ← model backend (Claude CLI → API key → fail loudly)
