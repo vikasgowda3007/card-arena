@@ -3,11 +3,11 @@
 Two AI agents fight over a prize: the right to be **the player's first credit card**.
 
 Each agent is handed one card's dossier (a `.md` file under `cards/`) and told to
-argue for it. Before it speaks, every advocate must run its claims past a
-**fact-checker** agent that verifies the numbers against live web sources. They
-then trade an opening statement and a few rebuttal rounds. A **judge** agent
-scores both against the player's weighted requirements — discounting any claim
-that came back unverified — and declares a winner.
+argue for it. Up front, a **fact-checker** agent verifies each card's numbers
+against live web sources; those verdicts are handed to the advocates, who then
+trade an opening statement and a few rebuttal rounds. A **judge** agent scores
+both against the player's weighted requirements — discounting any claim that came
+back unverified — and declares a winner.
 
 This is a real multi-agent debate, not a templating trick — every line the
 contestants and judge speak is a live Claude call.
@@ -17,9 +17,9 @@ contestants and judge speak is a live Claude call.
 | | Native slash command | Python CLI |
 |---|---|---|
 | How | `/judge-cards` inside Claude Code | `python -m arena` |
-| Agents | 5 real Claude Code subagents (2 advocates + 2 fact-checkers + 1 judge); advocates run in parallel, each spawning its own fact-checker | 1 Python process making sequential calls |
+| Agents | 5 real Claude Code subagents (2 fact-checkers + 2 advocates + 1 judge), spawned in parallel waves | 1 Python process making sequential calls |
 | Needs | Claude Code, web access for fact-checks | `claude` CLI on PATH, or an API key |
-| Best for | "nested fact-checked agents in my terminal" | scripting, tests, CI |
+| Best for | "fact-checked parallel agents in my terminal" | scripting, tests, CI |
 
 Both read the same `cards/` dossiers. Pick whichever fits.
 
@@ -57,20 +57,23 @@ Inside Claude Code, from the project root:
 ```
 
 What happens:
+0. **Round 0 — fact-check (once).** The command spawns two `card-fact-checker`
+   subagents in parallel (WebSearch + WebFetch), one per card, to verify each
+   card's numbers; claims that can't clear ~95% confidence are tagged
+   `[UNVERIFIED]`. The verdicts are captured once and reused in both later rounds.
 1. **Round 1 — parallel openings.** The command spawns two `card-advocate`
-   subagents in one batch. Before either speaks, each spawns its own
-   `card-fact-checker` (WebSearch + WebFetch) to verify its numbers; claims that
-   can't clear ~95% confidence get tagged `[UNVERIFIED]`. They then argue blind,
+   subagents in one batch, each handed its card's verdicts; they argue blind,
    simultaneously.
 2. **Round 2 — parallel rebuttals.** Both advocates run again in parallel, each
-   handed the other's opening to rebut.
+   handed the other's opening to rebut (and the same Round 0 verdicts).
 3. **Round 3 — verdict.** One `card-judge` subagent reads the rubric and the full
    transcript, scores both — giving near-zero weight to `[UNVERIFIED]` claims —
    and declares a winner.
 
-The nesting is: command → 2 advocates → each advocate → 1 fact-checker, then → 1
-judge. Agents launching agents. The parallelism is the two advocate+fact-checker
-branches within each round.
+The flow is: command → 2 fact-checkers (once) → 2 advocates ×2 rounds → 1 judge.
+The command orchestrates every subagent at the top level — advocates don't spawn
+their own checkers — so verification happens once and the web isn't re-hit each
+round.
 
 Files: `.claude/commands/judge-cards.md`, `.claude/commands/build-profile.md`,
 `.claude/agents/card-advocate.md`, `.claude/agents/card-fact-checker.md`,
