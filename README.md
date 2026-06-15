@@ -18,10 +18,15 @@ contestants and judge speak is a live Claude call.
 |---|---|---|
 | How | `/judge-cards` inside Claude Code | `python -m arena` |
 | Agents | 5 real Claude Code subagents (2 fact-checkers + 2 advocates + 1 judge), spawned in parallel waves | 1 Python process making sequential calls |
+| Fact-checked | ✅ claims web-verified, `[UNVERIFIED]` discounted | ❌ unverified debate |
 | Needs | Claude Code, web access for fact-checks | `claude` CLI on PATH, or an API key |
 | Best for | "fact-checked parallel agents in my terminal" | scripting, tests, CI |
 
-Both read the same `cards/` dossiers. Pick whichever fits.
+Both read the same `cards/` dossiers, but they are **not** equivalent: only the
+native `/judge-cards` flow fact-checks each card against live web sources and has
+the judge discount unverified claims. The Python CLI runs the debate straight from
+the dossiers with no verification — it's the lightweight path for scripting and
+tests, and it prints a reminder of this when it runs.
 
 ## Make it yours — build a player profile
 

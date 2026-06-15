@@ -41,14 +41,19 @@ class Arena:
         record(self.card_b.codename or self.card_b.name, self.card_b.name, 0,
                b.opening(self.card_a))
 
-        # Rebuttal rounds — each answers the other's last turn
+        # Rebuttal rounds — both answer the other's PREVIOUS-round turn. Capture
+        # both targets before generating either reply, so neither side gets to
+        # rebut an argument the other only just made this round (fair, symmetric,
+        # and matches the parallel-wave design of the native /judge-cards flow).
         for r in range(1, self.rounds + 1):
             last_b = _last_for(transcript, self.card_b.name)
-            record(self.card_a.codename or self.card_a.name, self.card_a.name, r,
-                   a.rebuttal(self.card_b, last_b))
             last_a = _last_for(transcript, self.card_a.name)
+            reply_a = a.rebuttal(self.card_b, last_b)
+            reply_b = b.rebuttal(self.card_a, last_a)
+            record(self.card_a.codename or self.card_a.name, self.card_a.name, r,
+                   reply_a)
             record(self.card_b.codename or self.card_b.name, self.card_b.name, r,
-                   b.rebuttal(self.card_a, last_a))
+                   reply_b)
 
         verdict = judge.verdict(transcript)
         return MatchResult(transcript=transcript, verdict=verdict)

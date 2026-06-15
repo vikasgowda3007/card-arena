@@ -60,6 +60,10 @@ def main(argv=None) -> int:
         print(DIM + build_opening_prompt(card_a, card_b) + RST)
         return 0
 
+    print(f"{DIM}Note: this Python path runs an unverified debate. For the "
+          f"fact-checked version (web-verified claims, [UNVERIFIED] discounting), "
+          f"use /judge-cards inside Claude Code.{RST}\n")
+
     llm = LLM(model=args.model, backend=args.backend)
 
     def on_turn(turn):
