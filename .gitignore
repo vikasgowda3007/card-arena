@@ -1,0 +1,19 @@
+# Python build artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Local env
+.env
+
+# macOS
+.DS_Store
+
+# Personal / private data — never published.
+# Real player profiles, verdicts, and any card notes you don't want public.
+personal/
+cards/requirements.local.md
+cards/*.local.md
