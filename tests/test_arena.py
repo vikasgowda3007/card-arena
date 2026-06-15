@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+import subprocess
+
 from arena.agents import (
     build_judge_prompt,
     build_opening_prompt,
@@ -16,6 +18,7 @@ from arena.agents import (
 )
 from arena.arena import Arena
 from arena.dossier import parse_card
+from arena.llm import LLM
 
 CARDS = Path(__file__).resolve().parent.parent / "cards"
 
@@ -78,6 +81,20 @@ def test_full_match_runs_with_fake_llm():
         "BofA Customized Cash Rewards for Students",
         "Discover it Student Cash Back",
     }
+
+
+def test_cli_timeout_becomes_runtimeerror(monkeypatch):
+    # A slow `claude` call must surface as RuntimeError (which cli.py handles),
+    # not a raw subprocess.TimeoutExpired traceback.
+    llm = LLM(backend="cli")
+    llm._resolved = "cli"  # skip PATH detection
+
+    def boom(*a, **k):
+        raise subprocess.TimeoutExpired(cmd="claude", timeout=180)
+
+    monkeypatch.setattr(subprocess, "run", boom)
+    with pytest.raises(RuntimeError):
+        llm.complete("sys", "user")
 
 
 def test_judge_prompt_contains_rubric_and_transcript():

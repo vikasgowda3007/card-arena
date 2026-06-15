@@ -20,7 +20,7 @@ class NoBackendAvailable(RuntimeError):
 
 
 class LLM:
-    def __init__(self, model: str = "claude-sonnet-4-6", max_tokens: int = 700,
+    def __init__(self, model: str = "claude-sonnet-4-6", max_tokens: int = 1500,
                  backend: str = "auto"):
         self.model = model
         self.max_tokens = max_tokens
@@ -55,34 +55,42 @@ class LLM:
         cmd = ["claude", "-p", user, "--append-system-prompt", system]
         if self.model:
             cmd += ["--model", self.model]
-        proc = subprocess.run(
-            cmd,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            timeout=180,
-        )
+        try:
+            proc = subprocess.run(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=180,
+            )
+        except subprocess.TimeoutExpired as e:
+            raise RuntimeError("claude CLI timed out after 180s") from e
         if proc.returncode != 0:
             raise RuntimeError(f"claude CLI failed: {proc.stderr.strip()}")
         return proc.stdout.strip()
 
     def _complete_api(self, system: str, user: str) -> str:
+        try:
+            import anthropic
+        except ImportError as e:
+            raise RuntimeError(
+                "The 'anthropic' package is not installed. Run: pip install anthropic"
+            ) from e
         if self._api_client is None:
-            try:
-                import anthropic
-            except ImportError as e:
-                raise RuntimeError(
-                    "The 'anthropic' package is not installed. Run: pip install anthropic"
-                ) from e
             self._api_client = anthropic.Anthropic(
                 api_key=os.environ["ANTHROPIC_API_KEY"]
             )
-        msg = self._api_client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        )
+        try:
+            msg = self._api_client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": user}],
+            )
+        except anthropic.APIError as e:
+            # Auth, rate-limit, network, etc. — surface as RuntimeError so the
+            # CLI's friendly handler catches it instead of dumping a traceback.
+            raise RuntimeError(f"Anthropic API error: {e}") from e
         return "".join(
             b.text for b in msg.content if getattr(b, "type", "") == "text"
         ).strip()
