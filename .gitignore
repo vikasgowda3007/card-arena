@@ -17,3 +17,6 @@ dist/
 personal/
 cards/requirements.local.md
 cards/*.local.md
+
+# Fact-check cache — derived, safe to delete, not worth diffing in git
+cards/.factcheck/

@@ -74,24 +74,27 @@ python -m arena --requirements personal/requirements.md
 
 0. **Build the field.** List `cards/*.md`, read `cards/roster.json`, drop disabled
    cards silently. N active cards.
-1. **Fact-check once per card.** The command spawns one `card-fact-checker`
-   subagent per active card in parallel (WebSearch + WebFetch); claims that can't
-   clear ~95% confidence are tagged `[UNVERIFIED]`. Each card's verdict is cached
-   and reused everywhere — the web is never re-hit for the same card.
-2. **Qualifier.** Every card makes ONE standalone `card-advocate` statement (all in
-   parallel), and a single `card-judge` in `MODE=rank` scores the whole field at
-   once. The **top 3 advance**; the rest are eliminated. Skipped when N ≤ 3.
-3. **Finals.** Only the top 3 fight a pairwise round-robin: for each pair, two
-   `card-advocate` subagents argue in parallel (openings blind, then rebuttals on
-   each other's openings) on cached verdicts, and one `card-judge` (`MODE=duel`)
-   scores the pair, giving near-zero weight to `[UNVERIFIED]` claims.
+1. **Fact-check once per card, with a disk cache.** A card's verdict lives at
+   `cards/.factcheck/<slug>.json`, keyed by a hash of its dossier. If the cache is
+   fresh (≤14 days, dossier unchanged), it's reused with **zero** subagent spawns.
+   Only cards with a missing/stale cache get a `card-fact-checker` subagent
+   (WebSearch + WebFetch); claims that can't clear ~95% confidence are tagged
+   `UNVERIFIED`.
+2. **Qualifier.** One `card-judge` in `MODE=rank` reads every active dossier and
+   its cached verdicts directly and scores the whole field at once — no
+   per-card advocate statement. The **top 3 advance**; the rest are eliminated.
+   Skipped when N ≤ 3.
+3. **Finals.** Only the top 3 fight a pairwise round-robin: for each pair, one
+   `card-judge` (`MODE=duel`) reads both dossiers + cached verdicts directly and
+   scores the pair, giving near-zero weight to unverified claims.
 4. **Standings.** Finals wins are tallied and a champion crowned (ties broken by
    average judge score).
 
-This keeps the head-to-head drama for the contenders that matter while avoiding an
-O(N²) round-robin over the whole field — for 6 cards it's ~28 subagent spawns
-instead of ~81. The command orchestrates every subagent at the top level —
-advocates don't spawn their own checkers — so verification happens once per card.
+There's no advocate-debate stage — a judge reading two dossiers and a rubric is
+the same signal as a judge reading two debate transcripts, at a third of the
+subagent count. Combined with the fact-check cache, a re-run over an unchanged
+roster costs as few as N+1 subagent spawns (1 judge per duel, 0 fact-checkers) —
+down from 3 agents per pair plus a fact-checker every run.
 
 `/scout-cards` grows the field instead of fighting: a `card-scout` agent reads
 your profile, searches the web for matching cards, drops any that fail your
@@ -108,7 +111,7 @@ card-arena/
 │   ├── plugin.json      ← plugin manifest (name, version, description)
 │   └── marketplace.json ← makes this repo its own installable marketplace
 ├── commands/      ← /arena, /build-profile, /judge-cards, /scout-cards, /list-cards
-├── agents/        ← card-advocate, card-fact-checker, card-judge, card-scout, profile-interviewer
+├── agents/        ← card-fact-checker, card-judge, card-scout, profile-interviewer
 ├── cards/
 │   ├── boa_student.md          ← contestant dossier ("The Strategist")
 │   ├── discover_it_student.md  ← contestant dossier ("The Underdog")

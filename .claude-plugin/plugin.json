@@ -1,7 +1,7 @@
 {
   "name": "card-arena",
   "version": "0.1.0",
-  "description": "Multi-agent credit-card debate for Claude Code. Build a player profile, scout profile-matched cards from the web, fact-check them, and run a two-stage tournament where advocate agents argue and a judge crowns your first card.",
+  "description": "Multi-agent credit-card arena for Claude Code. Build a player profile, scout profile-matched cards from the web, fact-check them (cached), and run a two-stage tournament where a judge scores dossiers directly and crowns your first card.",
   "author": {
     "name": "vikasgowda3007"
   },

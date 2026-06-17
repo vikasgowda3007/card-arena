@@ -33,7 +33,10 @@ silently.
 
 The scout reads the profile from `REQUIREMENTS_PATH`, searches the web, drops
 cards that don't fit that profile or already exist, verifies each survivor with a
-`card-fact-checker`, and Writes a verified dossier per survivor.
+`card-fact-checker`, and Writes a verified dossier per survivor. After writing a
+dossier, also write its fact-check verdict to `cards/.factcheck/<slug>.json`
+(with `dossier_hash` + `checked_at`) so `/judge-cards` doesn't re-verify a card
+the scout just checked.
 
 ## Step 3 — report
 When the scout returns, print:
