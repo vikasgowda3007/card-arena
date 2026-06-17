@@ -1,37 +1,39 @@
 # 🃏 Card Arena
 
-Two AI agents fight over a prize: the right to be **the player's first credit card**.
+AI agents fight over a prize: the right to be **the player's first credit card**.
 
-Each agent is handed one card's dossier (a `.md` file under `cards/`) and told to
-argue for it. Up front, a **fact-checker** agent verifies each card's numbers
-against live web sources; those verdicts are handed to the advocates, who then
-trade an opening statement and a few rebuttal rounds. A **judge** agent scores
-both against the player's weighted requirements — discounting any claim that came
-back unverified — and declares a winner.
+Every card lives as a dossier (a `.md` file under `cards/`). In the native flow,
+the whole active roster plays a **round-robin tournament** — each card debates
+every other, wins are tallied, and a champion is crowned. Up front, a
+**fact-checker** agent verifies each card's numbers against live web sources (once
+per card, then cached); those verdicts are handed to the advocates, who trade an
+opening statement and a rebuttal. A **judge** agent scores each pair against the
+player's weighted requirements — discounting any claim that came back unverified.
 
 This is a real multi-agent debate, not a templating trick — every line the
 contestants and judge speak is a live Claude call.
 
-## Two ways to play
+## The commands
 
-| | Native slash command | Python CLI |
-|---|---|---|
-| How | `/judge-cards` inside Claude Code | `python -m arena` |
-| Agents | 5 real Claude Code subagents (2 fact-checkers + 2 advocates + 1 judge), spawned in parallel waves | 1 Python process making sequential calls |
-| Fact-checked | ✅ claims web-verified, `[UNVERIFIED]` discounted | ❌ unverified debate |
-| Needs | Claude Code, web access for fact-checks | `claude` CLI on PATH, or an API key |
-| Best for | "fact-checked parallel agents in my terminal" | scripting, tests, CI |
+Inside Claude Code, from the project root:
 
-Both read the same `cards/` dossiers, but they are **not** equivalent: only the
-native `/judge-cards` flow fact-checks each card against live web sources and has
-the judge discount unverified claims. The Python CLI runs the debate straight from
-the dossiers with no verification — it's the lightweight path for scripting and
-tests, and it prints a reminder of this when it runs.
+| Command | What it does |
+|---|---|
+| `/arena` | Front door. Run with no argument for a menu; dispatches to the three below. |
+| `/judge-cards` (or `/arena battle`) | Round-robin tournament over the whole **active** roster; crowns a champion. |
+| `/scout-cards [n]` (or `/arena scout n`) | Discover `n` profile-matched cards on the web, fact-check them, add verified dossiers to `cards/`. |
+| `/list-cards` (or `/arena list`) | Show the roster; `enable`/`disable <slug>` to bench a card without deleting it. |
+| `/build-profile` | Interview yourself into a weighted rubric (see below). |
+
+The roster *is* the field — `/judge-cards` takes no card arguments. To leave a
+card out of a tournament, bench it with `/list-cards disable <slug>`; disabled
+cards are silently skipped (their dossiers stay on disk). Above 6 active cards the
+tournament warns you of the debate count before launching.
 
 ## Make it yours — build a player profile
 
-The judge scores cards against a **player profile** (`cards/requirements.md`).
-The one in the repo is a generic template. Build your own without editing files
+The judge scores cards against a **player profile**. The repo ships a generic
+example template at `cards/requirements.md`. Build your own without editing files
 by hand:
 
 ```
@@ -45,55 +47,54 @@ questions back to you — so you're only ever asked what actually matters. When 
 picture is complete it writes a weighted rubric to `personal/requirements.md`.
 
 `personal/` is **gitignored**, so your real profile, spending habits, and verdicts
-stay on your machine and are never pushed. Point the arena at it:
+stay on your machine and are never pushed. The slash commands prefer it
+automatically: `/judge-cards` and `/scout-cards` use `personal/requirements.md`
+when it exists and fall back to the public `cards/requirements.md` template
+otherwise. The Python CLI takes it explicitly:
 
 ```
-/judge-cards cards/boa_student.md cards/discover_it_student.md personal/requirements.md
 python -m arena --requirements personal/requirements.md
 ```
 
 ## The native version (nested, fact-checked agents)
 
-Inside Claude Code, from the project root:
+`/judge-cards` (or `/arena battle`) runs the tournament:
 
-```
-/judge-cards
-/judge-cards cards/boa_student.md cards/discover_it_student.md cards/requirements.md
-```
+0. **Build the field.** List `cards/*.md`, read `cards/roster.json`, drop disabled
+   cards silently. N active cards → N×(N−1)/2 debates.
+1. **Fact-check once per card.** The command spawns one `card-fact-checker`
+   subagent per active card in parallel (WebSearch + WebFetch); claims that can't
+   clear ~95% confidence are tagged `[UNVERIFIED]`. Each card's verdict is cached
+   and reused in every matchup — the web is never re-hit for the same card.
+2. **Round-robin debates.** For each pair: two `card-advocate` subagents argue in
+   parallel (openings blind, then rebuttals on each other's openings), each handed
+   its card's cached verdicts. One `card-judge` scores the pair, giving near-zero
+   weight to `[UNVERIFIED]` claims, and records the winner.
+3. **Standings.** Wins are tallied and a champion crowned (ties broken by average
+   judge score).
 
-What happens:
-0. **Round 0 — fact-check (once).** The command spawns two `card-fact-checker`
-   subagents in parallel (WebSearch + WebFetch), one per card, to verify each
-   card's numbers; claims that can't clear ~95% confidence are tagged
-   `[UNVERIFIED]`. The verdicts are captured once and reused in both later rounds.
-1. **Round 1 — parallel openings.** The command spawns two `card-advocate`
-   subagents in one batch, each handed its card's verdicts; they argue blind,
-   simultaneously.
-2. **Round 2 — parallel rebuttals.** Both advocates run again in parallel, each
-   handed the other's opening to rebut (and the same Round 0 verdicts).
-3. **Round 3 — verdict.** One `card-judge` subagent reads the rubric and the full
-   transcript, scores both — giving near-zero weight to `[UNVERIFIED]` claims —
-   and declares a winner.
-
-The flow is: command → 2 fact-checkers (once) → 2 advocates ×2 rounds → 1 judge.
 The command orchestrates every subagent at the top level — advocates don't spawn
-their own checkers — so verification happens once and the web isn't re-hit each
-round.
+their own checkers — so verification happens once per card and the web isn't
+re-hit each round.
 
-Files: `.claude/commands/judge-cards.md`, `.claude/commands/build-profile.md`,
-`.claude/agents/card-advocate.md`, `.claude/agents/card-fact-checker.md`,
-`.claude/agents/card-judge.md`, `.claude/agents/profile-interviewer.md`.
+`/scout-cards` grows the field instead of fighting: a `card-scout` agent reads
+your profile, searches the web for matching cards, drops any that fail your
+rubric's hard filters or already exist, verifies each survivor with a
+`card-fact-checker`, and writes a verified dossier per survivor into `cards/`.
+
+Files: everything under `.claude/commands/` and `.claude/agents/`.
 
 ## The pieces
 
 ```
 card-arena/
 ├── .claude/
-│   ├── commands/   ← /judge-cards (fact-checked debate), /build-profile (interview)
-│   └── agents/     ← card-advocate, card-fact-checker, card-judge, profile-interviewer
+│   ├── commands/   ← /arena, /judge-cards, /scout-cards, /list-cards, /build-profile
+│   └── agents/     ← card-advocate, card-fact-checker, card-judge, card-scout, profile-interviewer
 ├── cards/
-│   ├── boa_student.md          ← contestant A dossier ("The Strategist")
-│   ├── discover_it_student.md  ← contestant B dossier ("The Underdog")
+│   ├── boa_student.md          ← contestant dossier ("The Strategist")
+│   ├── discover_it_student.md  ← contestant dossier ("The Underdog")
+│   ├── roster.json             ← active/disabled registry (a card is active unless listed)
 │   └── requirements.md         ← the prize + weighted rubric template (judge reads this)
 ├── personal/       ← gitignored: your real profile + verdicts, never published
 ├── arena/
@@ -105,7 +106,12 @@ card-arena/
 └── tests/           ← run with NO model, using a fake LLM
 ```
 
-## Run it
+## The Python CLI (lightweight, pairwise, unverified)
+
+The native slash flow is the full experience: fact-checked, parallel agents, a
+whole-roster tournament. The Python CLI is the **lightweight path for scripting
+and tests** — it runs a single pairwise debate straight from two dossiers with
+**no web verification**, and prints a reminder of that when it runs.
 
 If you run this **inside the Claude CLI**, the `claude` command is on PATH —
 that's the default backend, no API key needed:
@@ -139,7 +145,7 @@ python -m arena --card-a cards/boa_student.md \
 
 A dossier just needs a `# Title` and ideally `- name:` / `- codename:` lines;
 the agent reads the whole file as prose, so write its strengths and weaknesses
-in plain English.
+in plain English. (Or let `/scout-cards` write them for you.)
 
 ## Test it (no key required)
 
@@ -153,10 +159,10 @@ loop, and judge-JSON handling are all verified offline.
 
 ## Extend it (ideas)
 
-- Add a third contestant and run a round-robin.
 - Have the judge reveal a per-criterion score breakdown.
 - Let the player (you) vote and compare against the judge.
 - Add a `--seed`-able deterministic backend for reproducible demos.
+- Teach the Python CLI to run the whole-roster round-robin too.
 
 ---
 *Not financial advice. The dossiers reflect terms captured June 2026; verify

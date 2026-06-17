@@ -1,0 +1,4 @@
+{
+  "_comment": "Card on/off registry. A card is ACTIVE unless it appears here set to false. Absence means active, so you only list the cards you've disabled. Slug = the dossier filename without .md.",
+  "disabled": { "boa_student": true }
+}

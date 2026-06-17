@@ -43,7 +43,8 @@ When the interviewer returns `status == "complete"`:
 ```
 ✅ Profile saved → <OUT>
 Run the arena against it:
-  /judge-cards cards/boa_student.md cards/discover_it_student.md <OUT>
+  /judge-cards            (tournament; auto-uses personal/requirements.md when present)
+  /scout-cards 5          (discover more cards that fit this profile)
   python -m arena --requirements <OUT>
 ```
 
