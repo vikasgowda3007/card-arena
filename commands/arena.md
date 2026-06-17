@@ -29,7 +29,7 @@ anything.
   /arena list enable  <slug>      bring a benched card back
   /arena scout [n]                discover n profile-matched cards (default 3),
                                   verify them, add to the roster
-  /arena battle                   run the whole-pool tournament; crown a champion
+  /arena battle                   run the two-stage tournament; crown a champion
 
   Examples:
     /arena profile
@@ -62,8 +62,9 @@ fact-checks each survivor, and writes verified dossiers to `cards/`.
 ## If SUB is `battle` — run the tournament
 Run the same logic as the `/judge-cards` command: build the ACTIVE field from
 `cards/` + `cards/roster.json` (silently skipping disabled cards), verify each
-card once, run the round-robin, and crown a champion. Honor the cost guardrail
-(warn + confirm above 6 active cards).
+card once, run the two-stage tournament (qualifier ranks the field → top 3 fight
+a pairwise final), and crown a champion. Honor the cost guardrail (warn + confirm
+above 12 active cards).
 
 ## If SUB is anything else
 Tell the player it's an unknown operation and re-print the menu above.

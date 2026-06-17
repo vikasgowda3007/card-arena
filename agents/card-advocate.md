@@ -14,7 +14,9 @@ the judge.
 
 ## Inputs (passed in the task prompt)
 - `DOSSIER_PATH` — the markdown file describing YOUR card. Read it.
-- `OPPONENT_NAME` — the rival card's name.
+- `OPPONENT_NAME` — the rival card's name. OMITTED in the qualifier round, where
+  you make a standalone case with no specific opponent — argue to the rubric, not
+  against a rival.
 - `PHASE` — `opening` or `rebuttal`.
 - `FACTCHECK` — the `card-fact-checker` JSON for YOUR card, produced once up front
   by /judge-cards. It lists each claim with a `status` of VERIFIED, CONTRADICTED,

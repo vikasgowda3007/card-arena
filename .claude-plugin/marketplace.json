@@ -8,7 +8,7 @@
     {
       "name": "card-arena",
       "source": "./",
-      "description": "Multi-agent credit-card debate: /arena to scout profile-matched cards, run a fact-checked round-robin, and crown your first card. Also /build-profile, /judge-cards, /scout-cards, /list-cards."
+      "description": "Multi-agent credit-card debate: /arena to scout profile-matched cards, run a fact-checked two-stage tournament, and crown your first card. Also /build-profile, /judge-cards, /scout-cards, /list-cards."
     }
   ]
 }
