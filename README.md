@@ -13,17 +13,28 @@ player's weighted requirements — discounting any claim that came back unverifi
 This is a real multi-agent debate, not a templating trick — every line the
 contestants and judge speak is a live Claude call.
 
-## The commands
+## Install
 
-Inside Claude Code, from the project root:
+Card Arena is a Claude Code plugin. The repo is its own marketplace, so:
+
+```
+/plugin marketplace add vikasgowda3007/card-arena
+/plugin install card-arena@card-arena
+```
+
+That gives you `/arena`, `/build-profile`, `/judge-cards`, `/scout-cards`, and
+`/list-cards` in any project. The `arena/` Python CLI is a separate, optional
+path (clone the repo and run `python -m arena`); it isn't part of the plugin.
+
+## The commands
 
 | Command | What it does |
 |---|---|
-| `/arena` | Front door. Run with no argument for a menu; dispatches to the three below. |
+| `/arena` | Front door. Run with no argument for a menu; dispatches to all of the below. |
+| `/arena profile` (or `/build-profile`) | Interview yourself into a weighted rubric (see below). |
 | `/judge-cards` (or `/arena battle`) | Round-robin tournament over the whole **active** roster; crowns a champion. |
 | `/scout-cards [n]` (or `/arena scout n`) | Discover `n` profile-matched cards on the web, fact-check them, add verified dossiers to `cards/`. |
 | `/list-cards` (or `/arena list`) | Show the roster; `enable`/`disable <slug>` to bench a card without deleting it. |
-| `/build-profile` | Interview yourself into a weighted rubric (see below). |
 
 The roster *is* the field — `/judge-cards` takes no card arguments. To leave a
 card out of a tournament, bench it with `/list-cards disable <slug>`; disabled
@@ -82,15 +93,17 @@ your profile, searches the web for matching cards, drops any that fail your
 rubric's hard filters or already exist, verifies each survivor with a
 `card-fact-checker`, and writes a verified dossier per survivor into `cards/`.
 
-Files: everything under `.claude/commands/` and `.claude/agents/`.
+Files: everything under `commands/` and `agents/`.
 
 ## The pieces
 
 ```
 card-arena/
-├── .claude/
-│   ├── commands/   ← /arena, /judge-cards, /scout-cards, /list-cards, /build-profile
-│   └── agents/     ← card-advocate, card-fact-checker, card-judge, card-scout, profile-interviewer
+├── .claude-plugin/
+│   ├── plugin.json      ← plugin manifest (name, version, description)
+│   └── marketplace.json ← makes this repo its own installable marketplace
+├── commands/      ← /arena, /build-profile, /judge-cards, /scout-cards, /list-cards
+├── agents/        ← card-advocate, card-fact-checker, card-judge, card-scout, profile-interviewer
 ├── cards/
 │   ├── boa_student.md          ← contestant dossier ("The Strategist")
 │   ├── discover_it_student.md  ← contestant dossier ("The Underdog")
