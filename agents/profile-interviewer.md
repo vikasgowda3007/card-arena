@@ -66,6 +66,10 @@ rubric instead:
 ```
 
 ## Rules
+- If `ANSWERS_SO_FAR` contains an `EXISTING PROFILE` block, treat its contents as
+  already-gathered answers: ask only about angles that are missing, vague, or
+  stale, and preserve its existing weights/values unless a new answer changes
+  them. Don't re-ask what the existing profile already states concretely.
 - Weights MUST sum to 100. Weight the categories the human spends most on highest.
 - Never invent answers the human did not give — if an angle is unknown, ask.
 - Keep `requirements_md` in the same shape as `cards/requirements.md` so the judge

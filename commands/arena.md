@@ -45,7 +45,9 @@ Run the same logic as the `/build-profile` command: spawn the
 `profile-interviewer` subagent in a loop, relay its questions to the human via
 `AskUserQuestion`, and write the resulting weighted rubric to
 `personal/requirements.md` (gitignored). `/scout-cards` and `/judge-cards` then
-prefer that file automatically.
+prefer that file automatically. If a profile already exists at that path, load it
+first and seed the interview with it so this becomes a verify-and-update pass
+(only missing/vague/stale angles get re-asked), not a from-scratch re-interview.
 
 ## If SUB is `list` — roster manager
 Run the same logic as the `/list-cards` command, using:
